@@ -2,6 +2,48 @@
 
 class Order extends OrderCore
 {
+    /**
+     * 
+     */
+    /**
+     * Retrieves the rows of order details for the current order.
+     *
+     * Executes a SQL query to fetch detailed information about each product in the order,
+     * including product IDs, prices (with and without tax), quantities, references, and other identifiers.
+     * Also calculates the product price with tax (`product_price_wt`) for each row.
+     *
+     * @return array Returns an array of associative arrays, each representing a row from the order details.
+     */
+    public function getWsOrderRows() {
+        $query = '
+            SELECT
+            `id_order_detail` as `id`,
+            `product_id`,
+            `product_price`,
+            `id_order`,
+            `product_attribute_id`,
+            `product_quantity`,
+            `product_name`,
+            `product_reference`,
+            `product_ean13`,
+            `product_isbn`,
+            `product_upc`,
+            `unit_price_tax_incl`,
+            `unit_price_tax_excl`,
+            (`product_price` * (
+                CASE
+                    WHEN `unit_price_tax_excl` > 0
+                    THEN ROUND(((`unit_price_tax_incl` - `unit_price_tax_excl`) / `unit_price_tax_excl`) * 100, 2)
+                    ELSE 0
+                END / 100
+            )+`product_price`) as `product_price_wt`
+            FROM `'._DB_PREFIX_.'order_detail`
+            WHERE id_order = '.(int)$this->id;
+        $result = Db::getInstance()->executeS($query);
+        return $result;
+    }
+
+
     protected $webserviceParameters = array(
         'objectMethods' => array('add' => 'addWs'),
         'objectNodeName' => 'order',
@@ -30,11 +72,11 @@ class Order extends OrderCore
                 'getter' => 'getWsShippingNumber',
                 'setter' => 'setWsShippingNumber'
             ),
-            // Custom field
+            // Ajout du champ personnalisé
             'transaction_id' => array(
-                'getter' => 'getApiOrderPayment',  // Call the method to get the value
-                'setter' => false,                // We don't want a setter for this field
-                'required' => false,              // Whether it is required or not in the API
+                'getter' => 'getApiOrderPayment',  // Appel de la méthode pour obtenir la valeur
+                'setter' => false,                     // On ne veut pas de setter pour ce champ
+                'required' => false,                   // Si c'est requis ou non dans l'API
             ),
         ),
         'associations' => array(
@@ -50,6 +92,7 @@ class Order extends OrderCore
                     'product_isbn' => array('setter' => false),
                     'product_upc' => array('setter' => false),
                     'product_price' => array('setter' => false),
+                    'product_price_wt' => array('setter' => false),
                     'unit_price_tax_incl' => array('setter' => false),
                     'unit_price_tax_excl' => array('setter' => false),
                 )
@@ -58,8 +101,8 @@ class Order extends OrderCore
     );
 
     /**
-     * Method to retrieve the custom payment method
-     * Fetches the value from your custom table
+     * Méthode pour obtenir la méthode de paiement personnalisée
+     * Récupère la valeur dans ta table personnalisée
      */
     public function getApiOrderPayment() {
         $order = Db::getInstance()->getRow('SELECT * FROM '._DB_PREFIX_.'orders WHERE id_order ="'.(int)$this->id.'"');
