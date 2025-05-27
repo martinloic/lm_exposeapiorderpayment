@@ -3,9 +3,6 @@
 class Order extends OrderCore
 {
     /**
-     * 
-     */
-    /**
      * Retrieves the rows of order details for the current order.
      *
      * Executes a SQL query to fetch detailed information about each product in the order,
@@ -44,6 +41,27 @@ class Order extends OrderCore
     }
 
 
+    /**
+     * Webservice parameters configuration for the Order class.
+     *
+     * This array defines how the Order object is exposed via the Prestashop Webservice API.
+     * It specifies object methods, node names, fields, and associations for serialization and deserialization.
+     *
+     * Structure:
+     * - objectMethods: Maps webservice actions to class methods (e.g., 'add' => 'addWs').
+     * - objectNodeName: The XML node name for a single order object.
+     * - objectsNodeName: The XML node name for a collection of order objects.
+     * - fields: Defines the fields exposed in the API, their requirements, resource links, and custom getter/setter methods.
+     *   - Each field can specify:
+     *     - xlink_resource: Related resource for linking (e.g., 'addresses', 'carts').
+     *     - required: Whether the field is required in the API.
+     *     - getter/setter: Custom methods for getting or setting the field value.
+     * - associations: Defines related entities (e.g., order_rows) and their fields, including requirements and custom setters.
+     *
+     * Notable customizations:
+     * - 'transaction_id': Custom field exposed via the API, uses 'getApiOrderPayment' as getter, no setter, not required.
+     * - 'order_rows': Virtual entity representing order line items, with detailed field configuration.
+     */
     protected $webserviceParameters = array(
         'objectMethods' => array('add' => 'addWs'),
         'objectNodeName' => 'order',
@@ -101,8 +119,12 @@ class Order extends OrderCore
     );
 
     /**
-     * Méthode pour obtenir la méthode de paiement personnalisée
-     * Récupère la valeur dans ta table personnalisée
+     * Retrieves the UUID of the transaction associated with the current order.
+     *
+     * This method queries the database for a message related to the order that contains
+     * a successful action completion notice and extracts the transaction UUID from it.
+     *
+     * @return string The transaction UUID if found, or an empty string otherwise.
      */
     public function getApiOrderPayment() {
         $order = Db::getInstance()->getRow('SELECT * FROM '._DB_PREFIX_.'orders WHERE id_order ="'.(int)$this->id.'"');
